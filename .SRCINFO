@@ -2,6 +2,7 @@ pkgbase = aureus
 	pkgdesc = a minimal AUR helper
 	pkgver = 1.0.0
 	pkgrel = 1
+	url = https://github.com/wsbankenstein/aureus
 	arch = any
 	license = GPL-3.0-or-later
 	depends = bash
