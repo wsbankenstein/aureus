@@ -1,0 +1,20 @@
+pkgbase = aureus
+	pkgdesc = a minimal AUR helper
+	pkgver = 1.0.0
+	pkgrel = 1
+	arch = any
+	license = GPL-3.0-or-later
+	depends = bash
+	depends = pacman
+	depends = fzf
+	depends = git
+	depends = less
+	depends = sed
+	depends = gzip
+	depends = jq
+	source = aureus
+	source = aureus-jq
+	sha256sums = d337e74ae4f71a09b488db832867f33ef4725acea3e9b36adc3c8a38251968a1
+	sha256sums = f7ca43ff8730040a3e59f705241eca05af784244506818681efa052646848e7c
+
+pkgname = aureus

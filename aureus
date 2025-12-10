@@ -1,0 +1,63 @@
+#!/bin/bash
+
+oldWd=$(pwd)
+
+wdBase=$XDG_CACHE_HOME
+if [[ -z $wd ]]; then
+    wdBase="$HOME"/.cache
+fi
+wd="$wdBase"/aureus
+mkdir -p $wd
+cd $wd
+
+jqFile="/usr/lib/aureus/aureus-jq"
+
+fzfPreview="curl -s https://aur.archlinux.org/rpc/v5/info?arg[]={} | jq -rf $jqFile > preview && cat preview"
+fzfBind="enter:execute(rm -rf {} && git clone https://aur.archlinux.org/{}.git && cd {} && makepkg -si)+accept"
+
+while getopts 'RQSU' opt; do
+    case $opt in 
+        R)
+            pacman -Qq | fzf --preview 'pacman -Qil {}' --layout=reverse --bind 'enter:execute(sudo pacman -Rsnc {})+accept'
+            ;;
+        Q)
+            pacman -Qq | fzf --preview 'pacman -Qil {}' --layout=reverse --bind 'enter:execute(pacman -Qil {} | less)+accept'
+            ;;
+        S)
+            curl -s https://aur.archlinux.org/packages.gz -O
+            gzip -df packages.gz
+            fzf --preview "$fzfPreview" --layout=reverse --bind "$fzfBind" < packages
+            ;;
+        U)
+            pacman -Qm > foreign-packages
+            while read -r line; do
+                name=$(echo $line | sed -e 's/ .*//')
+                version=$(echo $line | sed -e 's/.* //')
+                if [[ $name =~ "[*/]" ]]; then
+                    continue
+                fi
+                remoteVersion=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg[]=$name" | jq -r '.results[0].Version')
+                if [[ $remoteVersion > $version ]]; then
+                    if [[ -z $(git ls-remote https://aur.archlinux.org/"$name".git) ]]; then
+                        echo "$name isn't a package in the AUR - skipping"
+                    else
+                        echo "$name is outdated ($version) - updating to $remoteVersion"
+                        rm -rf "$name"
+                        git clone -q https://aur.archlinux.org/"$name".git
+                        cd $name
+                        yes | makepkg -si
+                        cd $wd
+                    fi
+                else
+                    echo "$name is up to date ($version) - skipping"
+                fi
+            done < foreign-packages
+            ;;
+    esac
+done
+
+if [[ -z $1 ]]; then
+    aureus -U
+fi
+
+cd $oldWd
