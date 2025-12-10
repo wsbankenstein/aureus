@@ -1,1 +1,1 @@
-.results[0] | "Name: " + .Name + "\nVersion: " +.Version + "\nDescription: " + .Description + "\nMaintainer: " + .Maintainer + "\nDepends: " + (.Depends | try join(", ") catch "None")
+.results[0] | "Name: " + .Name + "\nVersion: " +.Version + "\nDescription: " + .Description + "\nMaintainer: " + .Maintainer + "\nURL: " + .URL + "\nDepends: " + (.Depends | try join(", ") catch "None")

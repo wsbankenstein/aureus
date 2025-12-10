@@ -12,7 +12,7 @@ cd $wd
 
 jqFile="/usr/lib/aureus/aureus-jq"
 
-fzfPreview="curl -s https://aur.archlinux.org/rpc/v5/info?arg[]={} | jq -rf $jqFile > preview && cat preview"
+fzfPreview="curl -s 'https://aur.archlinux.org/rpc/v5/info?arg[]={}' | jq -rf $jqFile > preview && cat preview"
 fzfBind="enter:execute(rm -rf {} && git clone https://aur.archlinux.org/{}.git && cd {} && makepkg -si)+accept"
 
 while getopts 'RQSU' opt; do
