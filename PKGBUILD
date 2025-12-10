@@ -2,6 +2,7 @@ pkgname=aureus
 pkgver=1.0.0
 pkgrel=1 
 pkgdesc='a minimal AUR helper'
+url='https://github.com/wsbankenstein/aureus'
 arch=('any')
 license=('GPL-3.0-or-later')
 depends=('bash' 'pacman' 'fzf' 'git' 'less' 'sed' 'gzip' 'jq')
