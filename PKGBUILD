@@ -1,5 +1,5 @@
 pkgname=aureus
-pkgver=1.0.1
+pkgver=1.0.2
 pkgrel=1
 pkgdesc='a minimal AUR helper'
 url='https://github.com/wsbankenstein/aureus'
@@ -11,5 +11,5 @@ package() {
     install -Dm755 aureus ${pkgdir}/usr/bin/aureus
     install -Dm644 aureus-jq ${pkgdir}/usr/lib/${pkgname}/aureus-jq
 }
-sha256sums=('55dee08066e0f9860bf2accc35663c123a18d4a301fbaf4dc2931f0a0046987c'
+sha256sums=('7b7cdd0219c276c8c0281c209c84ae20b667cca0587c9dc7891bfdfa4119b90e'
             'fd3b51632457bbc53f433d16605e3c1fd767dba665b4f3d476ef5ad92525b674')

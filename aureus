@@ -33,21 +33,25 @@ while getopts 'RQSU' opt; do
             while read -r line; do
                 name=$(echo $line | sed -e 's/ .*//')
                 version=$(echo $line | sed -e 's/.* //')
-                if [[ $name =~ "[*/]" ]]; then
+                if [[ $name =~ [*/~] ]]; then
+                    # don't `rm -rf` anything that contains these characters, for obvious reasons
+                    # AUR package names can contain `.`, fortunately rm refuses to remove `.` and `..`
+                    continue
+                fi
+                if [[ -z $(git ls-remote https://aur.archlinux.org/"$name".git) ]]; then
+                    echo "$name isn't a package in the AUR - skipping"
                     continue
                 fi
                 remoteVersion=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg[]=$name" | jq -r '.results[0].Version')
-                if [[ $remoteVersion > $version ]]; then
-                    if [[ -z $(git ls-remote https://aur.archlinux.org/"$name".git) ]]; then
-                        echo "$name isn't a package in the AUR - skipping"
-                    else
-                        echo "$name is outdated ($version) - updating to $remoteVersion"
-                        rm -rf "$name"
-                        git clone -q https://aur.archlinux.org/"$name".git
-                        cd $name
-                        yes | makepkg -si
-                        cd $wd
-                    fi
+                if [[ $remoteVersion != $version ]]; then
+                    # there isn't really a good way to check which version is newer when you consider git versions
+                    # so we update if the versions differ
+                    echo "$name is outdated ($version) - updating to $remoteVersion"
+                    rm -rf "$name"
+                    git clone -q https://aur.archlinux.org/"$name".git
+                    cd $name
+                    yes | makepkg -si
+                    cd $wd
                 else
                     echo "$name is up to date ($version) - skipping"
                 fi
