@@ -15,7 +15,7 @@ jqFile="/usr/lib/aureus/aureus-jq"
 fzfPreview="curl -s 'https://aur.archlinux.org/rpc/v5/info?arg[]={}' | jq -rf $jqFile > preview && cat preview"
 fzfBind="enter:execute(rm -rf {} && git clone https://aur.archlinux.org/{}.git && cd {} && makepkg -si)+accept"
 
-while getopts 'RQSU' opt; do
+while getopts 'RQSUPC' opt; do
     case $opt in 
         R)
             pacman -Qq | fzf --preview 'pacman -Qil {}' --layout=reverse --bind 'enter:execute(sudo pacman -Rsnc {})+accept'
@@ -43,9 +43,7 @@ while getopts 'RQSU' opt; do
                     continue
                 fi
                 remoteVersion=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg[]=$name" | jq -r '.results[0].Version')
-                if [[ $remoteVersion != $version ]]; then
-                    # there isn't really a good way to check which version is newer when you consider git versions
-                    # so we update if the versions differ
+                if [[ $(vercmp $remoteVersion $version) -gt 0 ]]; then # vercmp (version comparison utility) is provided by pacman
                     echo "$name is outdated ($version) - updating to $remoteVersion"
                     rm -rf "$name"
                     git clone -q https://aur.archlinux.org/"$name".git
@@ -55,8 +53,18 @@ while getopts 'RQSU' opt; do
                 else
                     echo "$name is up to date ($version) - skipping"
                 fi
+                sudo -v # reset sudo timeout
             done < foreign-packages
             ;;
+        P)
+            sudo pacman -Syu
+            ;;
+        C)
+            if [[ -n $wd ]]; then
+                # running `rm -rf /*` would be fairly funny
+                echo "Clearing cache ($wd)..."
+                rm -rf "$wd"/*
+            fi
     esac
 done
 
