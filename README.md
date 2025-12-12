@@ -13,7 +13,7 @@ makepkg -si
 ## Installing packages
 `aureus -S` (for **S**ync, like in pacman) gives you a lovely searchable package list. find the one you want and press Enter to install it!
 
-or, if you already know the name of the package you want to install, `aureus -S pkgname` just installs it.
+or, if you already know the name of the packages you want to install, `aureus -S pkg1 pkg2 pkg3...` just installs them.
 
 ## Updating packages
 `aureus -U` (for **U**pgrade) updates all AUR packages that have newer versions available on the AUR.
@@ -25,7 +25,7 @@ or, if you already know the name of the package you want to install, `aureus -S 
 ## Removing packages
 `aureus -R` (for **R**emove, like in pacman) gives you a list of all your installed packages (including non-AUR ones), and pressing Enter yeets the package and all packages that depend on it (`sudo pacman -Rsnc $package`).
 
-or, if you already know the name of the package you want to remove, `aureus -R pkgname` just removes it.
+or, if you already know the name of the packages you want to remove, `aureus -R pkg1 pkg2 pkg3...` just removes them.
 
 (yes, the default remove operation is -Rsnc. i should probably change that)
 
