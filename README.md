@@ -34,10 +34,20 @@ or, if you already know the name of the package you want to remove, `aureus -R p
 
 or, if you already know the name of the package you want info about, `aureus -Q pkgname` just gives it to you.
 
+## Clearing the cache
+`aureus -C` (for **C**lear) clears (by way of `rm -rf`) the aureus cache (usually `$HOME/.cache/aureus`).
+
+## Multiple operations at once
+You can combine operations any way you like!
+- `aureus -UP` (upgrade everything)
+- `aureus -SUP pkgname` (install `pkgname` and upgrade everything)
+- `aureus -RC` (remove a package and clear the aureus cache)
+- whatever else you can think of!
+
 ---
 
 This project is on [GitHub](https://github.com/wsbankenstein/aureus) and [Codeberg](https://codeberg.org/bankenstein/aureus).
 
 If you have suggestions, please use the issue trackers.
 
-If there's a particularly pressing issue, please contact me at `aureus () martinbogdanov . com`.
+If there's something particularly urgent, please contact me at `aureus () martinbogdanov . com`.
