@@ -10,10 +10,46 @@ wd="$wdBase"/aureus
 mkdir -p $wd
 cd $wd
 
+installAURPackage() {
+    echo installing "$1" from the AUR...
+    if [[ $1 =~ [*/~] ]]; then
+        # don't `rm -rf` anything that contains these characters, for obvious reasons
+        # AUR package names can contain `.`, fortunately rm refuses to remove `.` and `..`
+        continue
+    fi
+    if [[ -z $(git ls-remote https://aur.archlinux.org/"$1".git) ]]; then
+        echo "$1 isn't a package in the AUR - skipping"
+        continue
+    fi
+    git clone -q https://aur.archlinux.org/"$1".git
+    cd "$1"
+    makepkg -si
+    cd "$wd"
+}
+
+installPackage() {
+    if [[ -e "$1" ]]; then
+        read -p "remove cached package $wd/$1? [y/n] " confirmation
+        if [[ $confirmation != "y" ]]; then
+            continue
+        fi
+        rm -rf "$wd"/"$1"
+    fi
+    echo checking whether "$1" can be installed via pacman...
+    sudo pacman -S $1
+    if [[ $? -eq 0 ]]; then
+        # package successfully installed via pacman
+        echo "$1" installed via pacman
+        continue
+    fi
+    echo could not install "$1" via pacman
+    installAURPackage "$1"
+}
+
 jqFile="/usr/lib/aureus/aureus-jq"
 
 fzfPreview="curl -s 'https://aur.archlinux.org/rpc/v5/info?arg[]={}' | jq -rf $jqFile > preview && cat preview"
-fzfBind="enter:execute(rm -rf {} && git clone https://aur.archlinux.org/{}.git && cd {} && makepkg -si)+accept"
+fzfBind="enter:execute(aureus -S {})+accept"
 
 while getopts 'RQSUPC' opt; do
     case $opt in 
@@ -37,34 +73,7 @@ while getopts 'RQSUPC' opt; do
                 gzip -df packages.gz
                 fzf --preview "$fzfPreview" --layout=reverse --bind "$fzfBind" < packages
             else
-                echo checking whether "$2" can be installed via pacman...
-                sudo pacman -S $2
-                if [[ $? -eq 0 ]]; then
-                    # package successfully installed via pacman
-                    echo "$2" installed via pacman
-                    continue
-                fi
-                echo could not install "$2" via pacman
-                echo installing "$2" from the AUR...
-                if [[ $2 =~ [*/~] ]]; then
-                    # don't `rm -rf` anything that contains these characters, for obvious reasons
-                    # AUR package names can contain `.`, fortunately rm refuses to remove `.` and `..`
-                    continue
-                fi
-                if [[ -z $(git ls-remote https://aur.archlinux.org/"$2".git) ]]; then
-                    echo "$2 isn't a package in the AUR - skipping"
-                    continue
-                fi
-                if [[ -e "$2" ]]; then
-                    read -p "remove cached package $wd/$2? [y/n] " confirmation
-                    if [[ $confirmation != "y" ]]; then
-                        continue
-                    fi
-                    rm -rf "$wd"/"$2"
-                fi
-                git clone -q https://aur.archlinux.org/"$2".git
-                cd "$2"
-                makepkg -si
+                installPackage "$2"
             fi
             ;;
         U)
@@ -85,11 +94,7 @@ while getopts 'RQSUPC' opt; do
                 remoteVersion=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg[]=$name" | jq -r '.results[0].Version')
                 if [[ $(vercmp $remoteVersion $version) -gt 0 ]]; then # vercmp (version comparison utility) is provided by pacman
                     echo "$name is outdated ($version) - updating to $remoteVersion"
-                    rm -rf "$name"
-                    git clone -q https://aur.archlinux.org/"$name".git
-                    cd $name
-                    yes | makepkg -si
-                    cd $wd
+                    installAURPackage "$name"
                 else
                     echo "$name is up to date ($version) - skipping"
                 fi
@@ -106,6 +111,7 @@ while getopts 'RQSUPC' opt; do
                 fi
                 rm -rf "$wd"/*
             fi
+            ;;
     esac
 done
 
