@@ -3,7 +3,7 @@
 oldWd=$(pwd)
 
 wdBase=$XDG_CACHE_HOME
-if [[ -z $wd ]]; then
+if [[ -z $wdBase ]]; then
     wdBase="$HOME"/.cache
 fi
 wd="$wdBase"/aureus
@@ -18,19 +18,59 @@ fzfBind="enter:execute(rm -rf {} && git clone https://aur.archlinux.org/{}.git &
 while getopts 'RQSUPC' opt; do
     case $opt in 
         R)
-            pacman -Qq | fzf --preview 'pacman -Qil {}' --layout=reverse --bind 'enter:execute(sudo pacman -Rsnc {})+accept'
+            if [[ -z $2 ]]; then
+                pacman -Qq | fzf --preview 'pacman -Qil {}' --layout=reverse --bind 'enter:execute(sudo pacman -Rsnc {})+accept'
+            else
+                sudo pacman -Rnsc $2
+            fi
             ;;
         Q)
-            pacman -Qq | fzf --preview 'pacman -Qil {}' --layout=reverse --bind 'enter:execute(pacman -Qil {} | less)+accept'
+            if [[ -z $2 ]]; then
+                pacman -Qq | fzf --preview 'pacman -Qil {}' --layout=reverse --bind 'enter:execute(pacman -Qil {} | less)+accept'
+            else
+                pacman -Qil $2
+            fi
             ;;
         S)
-            curl -s https://aur.archlinux.org/packages.gz -O
-            gzip -df packages.gz
-            fzf --preview "$fzfPreview" --layout=reverse --bind "$fzfBind" < packages
+            if [[ -z $2 ]]; then
+                curl -s https://aur.archlinux.org/packages.gz -O
+                gzip -df packages.gz
+                fzf --preview "$fzfPreview" --layout=reverse --bind "$fzfBind" < packages
+            else
+                echo checking whether "$2" can be installed via pacman...
+                sudo pacman -S $2
+                if [[ $? -eq 0 ]]; then
+                    # package successfully installed via pacman
+                    echo "$2" installed via pacman
+                    continue
+                fi
+                echo could not install "$2" via pacman
+                echo installing "$2" from the AUR...
+                if [[ $2 =~ [*/~] ]]; then
+                    # don't `rm -rf` anything that contains these characters, for obvious reasons
+                    # AUR package names can contain `.`, fortunately rm refuses to remove `.` and `..`
+                    continue
+                fi
+                if [[ -z $(git ls-remote https://aur.archlinux.org/"$2".git) ]]; then
+                    echo "$2 isn't a package in the AUR - skipping"
+                    continue
+                fi
+                if [[ -e "$2" ]]; then
+                    read -p "remove cached package $wd/$2? [y/n] " confirmation
+                    if [[ $confirmation != "y" ]]; then
+                        continue
+                    fi
+                    rm -rf "$wd"/"$2"
+                fi
+                git clone -q https://aur.archlinux.org/"$2".git
+                cd "$2"
+                makepkg -si
+            fi
             ;;
         U)
             pacman -Qm > foreign-packages
             while read -r line; do
+                sudo -v # reset sudo timeout
                 name=$(echo $line | sed -e 's/ .*//')
                 version=$(echo $line | sed -e 's/.* //')
                 if [[ $name =~ [*/~] ]]; then
@@ -53,7 +93,6 @@ while getopts 'RQSUPC' opt; do
                 else
                     echo "$name is up to date ($version) - skipping"
                 fi
-                sudo -v # reset sudo timeout
             done < foreign-packages
             ;;
         P)
@@ -61,15 +100,17 @@ while getopts 'RQSUPC' opt; do
             ;;
         C)
             if [[ -n $wd ]]; then
-                # running `rm -rf /*` would be fairly funny
-                echo "Clearing cache ($wd)..."
+                read -p "clear cache ($wd)? [y/n] " confirmation
+                if [[ $confirmation != "y" ]]; then
+                    continue
+                fi
                 rm -rf "$wd"/*
             fi
     esac
 done
 
 if [[ -z $1 ]]; then
-    aureus -U
+    aureus -UP
 fi
 
 cd $oldWd

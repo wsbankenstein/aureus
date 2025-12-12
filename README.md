@@ -10,21 +10,29 @@ makepkg -si
 
 (this is how you install AUR packages without an AUR helper. it's also what aureus does!)
 
-## Installing AUR packages
-`aureus -S` (no args) gives you a lovely searchable package list. find the one you want and press Enter to install it!
+## Installing packages
+`aureus -S` (for **S**ync, like in pacman) gives you a lovely searchable package list. find the one you want and press Enter to install it!
 
-## Updating AUR packages
-`aureus` updates all AUR packages that have newer versions available on the AUR.
+or, if you already know the name of the package you want to install, `aureus -S pkgname` just installs it.
 
-(this is actually an alias to `aureus -U` which does the same thing.)
+## Updating packages
+`aureus -U` (for **U**pgrade) updates all AUR packages that have newer versions available on the AUR.
+
+`aureus -P` (for **P**acman) is an alias to `sudo pacman -Syu`.
+
+`aureus` (no args) is an alias to `aureus -UP`.
 
 ## Removing packages
-`aureus -R` gives you a list of all your installed packages (including non-AUR ones), and pressing Enter yeets the package and all packages that depend on it (`sudo pacman -Rsnc $package`).
+`aureus -R` (for **R**emove, like in pacman) gives you a list of all your installed packages (including non-AUR ones), and pressing Enter yeets the package and all packages that depend on it (`sudo pacman -Rsnc $package`).
+
+or, if you already know the name of the package you want to remove, `aureus -R pkgname` just removes it.
 
 (yes, the default remove operation is -Rsnc. i should probably change that)
 
 ## Information about installed packages
-`aureus -Q` gives you a list of all your installed packages (including non-AUR ones), and pressing Enter shows the corresponding package info + file list (`pacman -Qil $package | less`).
+`aureus -Q` (for **Q**uery, like in pacman) gives you a list of all your installed packages (including non-AUR ones), and pressing Enter shows the corresponding package info + file list (`pacman -Qil $package | less`).
+
+or, if you already know the name of the package you want info about, `aureus -Q pkgname` just gives it to you.
 
 ---
 
