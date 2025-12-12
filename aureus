@@ -1,5 +1,7 @@
 #!/bin/bash
 
+args=( "$@" )
+
 oldWd=$(pwd)
 
 wdBase=$XDG_CACHE_HOME
@@ -15,23 +17,31 @@ installAURPackage() {
     if [[ $1 =~ [*/~] ]]; then
         # don't `rm -rf` anything that contains these characters, for obvious reasons
         # AUR package names can contain `.`, fortunately rm refuses to remove `.` and `..`
-        continue
+        return 1
     fi
     if [[ -z $(git ls-remote https://aur.archlinux.org/"$1".git) ]]; then
-        echo "$1 isn't a package in the AUR - skipping"
-        continue
+        echo "$1 isn't a package in the AUR"
+        return 1
     fi
     git clone -q https://aur.archlinux.org/"$1".git
     cd "$1"
-    makepkg -si
+    makepkg -si 2>&1 | tee makepkg-output # copy output to file
+    if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
+        # check dependencies by analysing makepkg-output
+        echo "makepkg failed, checking dependencies..."
+        deps=$(awk '{print $2}' makepkg-output | tr '\n' ' ' | sed -e 's/.*Missing //' -e 's/ERROR.*//' -e 's/[A-Z].* //')
+        installMultiplePackages $deps
+        installAURPackage $1
+    fi
     cd "$wd"
 }
 
 installPackage() {
     if [[ -e "$1" ]]; then
-        read -p "remove cached package $wd/$1? [y/n] " confirmation
+        read -rp "remove cached package $wd/$1? [y/n] " confirmation
         if [[ $confirmation != "y" ]]; then
-            continue
+            cd "$1"
+            makepkg -si
         fi
         rm -rf "$wd"/"$1"
     fi
@@ -40,10 +50,23 @@ installPackage() {
     if [[ $? -eq 0 ]]; then
         # package successfully installed via pacman
         echo "$1" installed via pacman
-        continue
+        return 0
     fi
     echo could not install "$1" via pacman
     installAURPackage "$1"
+}
+
+installMultiplePackages() {
+    for name in "$@"; do
+        echo $name
+        installPackage $name
+    done
+}
+
+removeMultiplePackages() {
+    for name in "$@"; do
+        sudo pacman -Rnsc $name
+    done
 }
 
 jqFile="/usr/lib/aureus/aureus-jq"
@@ -57,7 +80,7 @@ while getopts 'RQSUPC' opt; do
             if [[ -z $2 ]]; then
                 pacman -Qq | fzf --preview 'pacman -Qil {}' --layout=reverse --bind 'enter:execute(sudo pacman -Rsnc {})+accept'
             else
-                sudo pacman -Rnsc $2
+                removeMultiplePackages "${args[@]:1}"
             fi
             ;;
         Q)
@@ -73,7 +96,7 @@ while getopts 'RQSUPC' opt; do
                 gzip -df packages.gz
                 fzf --preview "$fzfPreview" --layout=reverse --bind "$fzfBind" < packages
             else
-                installPackage "$2"
+                installMultiplePackages "${args[@]:1}"
             fi
             ;;
         U)
@@ -105,7 +128,7 @@ while getopts 'RQSUPC' opt; do
             ;;
         C)
             if [[ -n $wd ]]; then
-                read -p "clear cache ($wd)? [y/n] " confirmation
+                read -rp "clear cache ($wd)? [y/n] " confirmation
                 if [[ $confirmation != "y" ]]; then
                     continue
                 fi
