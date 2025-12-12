@@ -39,4 +39,5 @@ or, if you already know the name of the package you want info about, `aureus -Q 
 This project is on [GitHub](https://github.com/wsbankenstein/aureus) and [Codeberg](https://codeberg.org/bankenstein/aureus).
 
 If you have suggestions, please use the issue trackers.
+
 If there's a particularly pressing issue, please contact me at `aureus () martinbogdanov . com`.
