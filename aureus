@@ -12,6 +12,49 @@ wd="$wdBase"/aureus
 mkdir -p $wd
 cd $wd
 
+removeCached() {
+    # if [[ -e "$wd/$1" ]]; then
+    #     read -rp "remove cached package $wd/$1? [y/n] " confirmation
+    #     if [[ $confirmation != "y" ]]; then
+    #         cd "$1"
+    #         makepkg -si
+    #     fi
+    #     rm -rf "$wd/$1"
+    # fi
+    rm -rf "$wd/$1" # fuck it
+}
+
+installDep() {
+    # check if package is provided
+    provider=$(pacman -Q $1)
+    if [[ -n $provider ]]; then
+        echo "package $1 is already provided by $provider - skipping" 
+        return 0
+    fi
+    sudo pacman -S --needed --asdeps $1
+    if [[ $? -ne 0 ]]; then
+        cd "$wd"
+        if [[ -e "$1" ]]; then
+            read -rp "remove cached package $wd/$1? [y/n] " confirmation
+            if [[ $confirmation != "y" ]]; then
+                cd "$1"
+                makepkg -si --needed --asdeps
+            fi
+            rm -rf "$wd"/"$1"
+        else
+            git clone https://aur.archlinux.org/"$1".git
+            cd "$1"
+            makepkg -si --needed --asdeps
+        fi
+    fi
+}
+
+installMultipleDeps() {
+    for name in "$@"; do
+        installDep $name
+    done
+}
+
 installAURPackage() {
     echo installing "$1" from the AUR...
     if [[ $1 =~ [*/~] ]]; then
@@ -23,28 +66,24 @@ installAURPackage() {
         echo "$1 isn't a package in the AUR"
         return 1
     fi
+    deps=$(curl "https://aur.archlinux.org/rpc/v5/info?arg[]=$1" | jq -r '.results[0].Depends.[]' 2>/dev/null | tr '\n' ' ' | sed -e 's/[>=<][>=<0-9\.-]* / /')
+    makedeps=$(curl "https://aur.archlinux.org/rpc/v5/info?arg[]=$1" | jq -r '.results[0].MakeDepends.[]' 2>/dev/null | tr '\n' ' ' | sed -e 's/[>=<][>=<0-9\.-]* / /')
+    installMultipleDeps $deps
+    installMultipleDeps $makedeps
     git clone -q https://aur.archlinux.org/"$1".git
     cd "$1"
-    makepkg -si 2>&1 | tee makepkg-output # copy output to file
-    if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
-        # check dependencies by analysing makepkg-output
-        echo "makepkg failed, checking dependencies..."
-        deps=$(awk '{print $2}' makepkg-output | tr '\n' ' ' | sed -e 's/.*Missing //' -e 's/ERROR.*//' -e 's/[A-Z].* //')
-        installMultiplePackages $deps
-        installAURPackage $1
-    fi
+    makepkg -si
     cd "$wd"
+    if [[ -n $makedeps ]]; then
+        read -rp "remove makedeps ($makedeps)? [y/n] " confirmation
+        if [[ $confirmation == "y" ]]; then
+            removeMultiplePackages $makedeps
+        fi
+    fi
 }
 
 installPackage() {
-    if [[ -e "$1" ]]; then
-        read -rp "remove cached package $wd/$1? [y/n] " confirmation
-        if [[ $confirmation != "y" ]]; then
-            cd "$1"
-            makepkg -si
-        fi
-        rm -rf "$wd"/"$1"
-    fi
+    removeCached $1
     echo checking whether "$1" can be installed via pacman...
     sudo pacman -S $1
     if [[ $? -eq 0 ]]; then
@@ -117,6 +156,7 @@ while getopts 'RQSUPC' opt; do
                 remoteVersion=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg[]=$name" | jq -r '.results[0].Version')
                 if [[ $(vercmp $remoteVersion $version) -gt 0 ]]; then # vercmp (version comparison utility) is provided by pacman
                     echo "$name is outdated ($version) - updating to $remoteVersion"
+                    removeCached $name
                     installAURPackage "$name"
                 else
                     echo "$name is up to date ($version) - skipping"
